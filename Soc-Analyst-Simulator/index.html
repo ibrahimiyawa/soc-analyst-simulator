@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOC Analyst — Threat Operations Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050a0e;
+  --surface: #0a1520;
+  --panel: #0d1d2e;
+  --border: #1a3a5c;
+  --accent: #00d4ff;
+  --accent2: #00ff9d;
+  --warn: #ffb700;
+  --danger: #ff3c5a;
+  --text: #c8e6f5;
+  --dim: #4a7a9b;
+  --success: #00ff9d;
+  --muted: #1e3a52;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scanline effect */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,212,255,0.015) 2px, rgba(0,212,255,0.015) 4px);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Grid background */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+/* HEADER */
+.hud-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  margin-bottom: 20px;
+  position: relative;
+  clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+}
+
+.hud-header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: scanH 3s ease-in-out infinite;
+}
+
+@keyframes scanH {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.logo {
+  font-family: 'Orbitron', monospace;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--accent);
+  text-shadow: 0 0 20px rgba(0,212,255,0.5);
+  letter-spacing: 3px;
+}
+
+.logo span { color: var(--accent2); }
+
+.hud-stats {
+  display: flex;
+  gap: 30px;
+}
+
+.stat-block { text-align: center; }
+.stat-label { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--dim); letter-spacing: 2px; text-transform: uppercase; }
+.stat-value { font-family: 'Orbitron', monospace; font-size: 18px; font-weight: 700; color: var(--accent2); }
+.stat-value.danger { color: var(--danger); animation: pulse 1s ease-in-out infinite; }
+
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+/* SCREENS */
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* INTRO SCREEN */
+.intro-screen {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.intro-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 48px;
+  font-weight: 900;
+  color: var(--accent);
+  text-shadow: 0 0 40px rgba(0,212,255,0.4);
+  margin-bottom: 8px;
+  line-height: 1.1;
+}
+
+.intro-sub {
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--accent2);
+  font-size: 14px;
+  letter-spacing: 4px;
+  margin-bottom: 40px;
+}
+
+.intro-brief {
+  max-width: 600px;
+  margin: 0 auto 50px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 30px;
+  text-align: left;
+  line-height: 1.8;
+  color: var(--text);
+  font-size: 15px;
+  clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
+}
+
+.intro-brief h3 {
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--accent);
+  font-size: 12px;
+  letter-spacing: 3px;
+  margin-bottom: 15px;
+  text-transform: uppercase;
+}
+
+.difficulty-select {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.diff-btn {
+  padding: 12px 28px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--dim);
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+
+.diff-btn:hover, .diff-btn.selected {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(0,212,255,0.1);
+  box-shadow: 0 0 20px rgba(0,212,255,0.2);
+}
+
+.diff-btn.selected { color: var(--accent2); border-color: var(--accent2); }
+
+.start-btn {
+  padding: 16px 50px;
+  background: transparent;
+  border: 2px solid var(--accent2);
+  color: var(--accent2);
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: all 0.3s;
+  clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
+  position: relative;
+  overflow: hidden;
+}
+
+.start-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--accent2);
+  transform: translateX(-100%);
+  transition: transform 0.3s;
+  z-index: -1;
+}
+
+.start-btn:hover { color: var(--bg); box-shadow: 0 0 30px rgba(0,255,157,0.4); }
+.start-btn:hover::before { transform: translateX(0); }
+
+/* GAME SCREEN */
+.game-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+  min-height: 600px;
+}
+
+/* ALERT FEED */
+.alert-feed {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+}
+
+.panel-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.blink-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: pulse 0.8s ease-in-out infinite;
+}
+
+.alerts-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.alerts-list::-webkit-scrollbar { width: 4px; }
+.alerts-list::-webkit-scrollbar-track { background: var(--muted); }
+.alerts-list::-webkit-scrollbar-thumb { background: var(--accent); }
+
+.alert-item {
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border: 1px solid var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.alert-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+}
+
+.alert-item.critical::before { background: var(--danger); }
+.alert-item.high::before { background: var(--warn); }
+.alert-item.medium::before { background: var(--accent); }
+.alert-item.low::before { background: var(--dim); }
+
+.alert-item:hover, .alert-item.active {
+  border-color: var(--accent);
+  background: rgba(0,212,255,0.05);
+}
+
+.alert-item.active { border-color: var(--accent2); }
+
+.alert-severity {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+
+.alert-item.critical .alert-severity { color: var(--danger); }
+.alert-item.high .alert-severity { color: var(--warn); }
+.alert-item.medium .alert-severity { color: var(--accent); }
+.alert-item.low .alert-severity { color: var(--dim); }
+
+.alert-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+
+.alert-time {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+}
+
+.alert-item.resolved { opacity: 0.4; }
+.alert-item.resolved::after {
+  content: 'RESOLVED';
+  position: absolute;
+  right: 8px; top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: var(--accent2);
+  letter-spacing: 1px;
+}
+
+/* INVESTIGATION PANEL */
+.investigation-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+
+.inv-content { flex: 1; padding: 20px; overflow-y: auto; }
+
+.placeholder-msg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 400px;
+  color: var(--dim);
+}
+
+.placeholder-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.placeholder-msg p {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 2px;
+}
+
+/* LOG DISPLAY */
+.log-block {
+  background: var(--surface);
+  border: 1px solid var(--muted);
+  padding: 16px;
+  margin-bottom: 16px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-all;
+  position: relative;
+}
+
+.log-block-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.log-highlight { color: var(--warn); }
+.log-danger { color: var(--danger); font-weight: bold; }
+.log-normal { color: #6a9ab8; }
+.log-value { color: var(--accent2); }
+
+/* ANALYSIS FORM */
+.analysis-section {
+  border-top: 1px solid var(--border);
+  padding: 20px;
+}
+
+.analysis-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.question-block {
+  margin-bottom: 20px;
+}
+
+.question-text {
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.options-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.option-btn {
+  padding: 10px 16px;
+  background: var(--surface);
+  border: 1px solid var(--muted);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.option-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgba(0,212,255,0.08);
+  color: var(--accent);
+}
+
+.option-btn .opt-key {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  min-width: 20px;
+}
+
+.option-btn.correct {
+  border-color: var(--success);
+  background: rgba(0,255,157,0.1);
+  color: var(--success);
+}
+
+.option-btn.wrong {
+  border-color: var(--danger);
+  background: rgba(255,60,90,0.1);
+  color: var(--danger);
+}
+
+.option-btn:disabled { cursor: default; }
+
+/* FEEDBACK */
+.feedback-box {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid;
+  display: none;
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+.feedback-box.show { display: block; }
+.feedback-box.correct { border-color: var(--success); background: rgba(0,255,157,0.05); color: var(--success); }
+.feedback-box.wrong { border-color: var(--danger); background: rgba(255,60,90,0.05); color: var(--warn); }
+
+.feedback-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+.feedback-text { color: var(--text); font-size: 13px; }
+
+/* ACTION BUTTONS */
+.action-bar {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid;
+  background: transparent;
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.action-btn.escalate { border-color: var(--warn); color: var(--warn); }
+.action-btn.escalate:hover { background: rgba(255,183,0,0.1); }
+.action-btn.resolve { border-color: var(--success); color: var(--success); }
+.action-btn.resolve:hover { background: rgba(0,255,157,0.1); }
+.action-btn.false-positive { border-color: var(--dim); color: var(--dim); }
+.action-btn.false-positive:hover { border-color: var(--text); color: var(--text); }
+.action-btn:disabled { opacity: 0.3; cursor: default; }
+
+/* TIMER */
+.timer-bar-wrap {
+  padding: 0 20px 12px;
+}
+
+.timer-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.timer-bar {
+  height: 4px;
+  background: var(--muted);
+  position: relative;
+}
+
+.timer-fill {
+  height: 100%;
+  background: var(--accent2);
+  transition: width 1s linear, background 0.5s;
+  position: relative;
+}
+
+.timer-fill.warning { background: var(--warn); }
+.timer-fill.critical { background: var(--danger); animation: pulse 0.5s infinite; }
+
+/* RESULTS SCREEN */
+.results-screen {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.results-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 36px;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.results-title.pass { color: var(--accent2); text-shadow: 0 0 30px rgba(0,255,157,0.4); }
+.results-title.fail { color: var(--danger); text-shadow: 0 0 30px rgba(255,60,90,0.4); }
+
+.results-grade {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 4px;
+  margin-bottom: 50px;
+  color: var(--dim);
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  max-width: 700px;
+  margin: 0 auto 40px;
+}
+
+.result-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 24px;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+
+.result-card-value {
+  font-family: 'Orbitron', monospace;
+  font-size: 36px;
+  font-weight: 900;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.result-card-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--dim);
+}
+
+.lesson-recap {
+  max-width: 700px;
+  margin: 0 auto 40px;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 24px;
+}
+
+.lesson-recap h3 {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+
+.recap-item {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.recap-icon { font-size: 16px; flex-shrink: 0; }
+
+.replay-btn {
+  padding: 14px 40px;
+  background: transparent;
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: all 0.3s;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+
+.replay-btn:hover { background: rgba(0,212,255,0.1); box-shadow: 0 0 20px rgba(0,212,255,0.3); }
+
+/* KNOWLEDGE TAGS */
+.knowledge-tag {
+  display: inline-block;
+  padding: 3px 10px;
+  border: 1px solid var(--muted);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 1px;
+  margin: 3px;
+}
+
+/* Progress */
+.progress-track {
+  display: flex;
+  gap: 4px;
+  padding: 0 20px 16px;
+}
+
+.progress-pip {
+  flex: 1;
+  height: 3px;
+  background: var(--muted);
+  transition: background 0.3s;
+}
+
+.progress-pip.done { background: var(--accent2); }
+.progress-pip.current { background: var(--accent); animation: pulse 1s infinite; }
+
+@media (max-width: 768px) {
+  .game-layout { grid-template-columns: 1fr; }
+  .results-grid { grid-template-columns: 1fr 1fr; }
+  .intro-title { font-size: 32px; }
+  .hud-stats { gap: 16px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HUD HEADER -->
+  <header class="hud-header">
+    <div class="logo">SOC<span>OPS</span></div>
+    <div class="hud-stats">
+      <div class="stat-block">
+        <div class="stat-label">Score</div>
+        <div class="stat-value" id="scoreDisplay">0</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-label">Accuracy</div>
+        <div class="stat-value" id="accuracyDisplay">--%</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-label">Tier</div>
+        <div class="stat-value" id="tierDisplay">L1</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- INTRO SCREEN -->
+  <div class="screen active" id="introScreen">
+    <div class="intro-screen">
+      <div class="intro-title">THREAT OPS<br>CENTER</div>
+      <div class="intro-sub">// SOC ANALYST TRAINING SIMULATION //</div>
+      <div class="intro-brief">
+        <h3>// Mission Brief</h3>
+        <p>You are a Tier 1 SOC Analyst. Your job is to investigate security alerts, analyze logs, identify attack patterns, and make the correct triage decision — escalate, resolve, or mark as false positive.</p>
+        <br>
+        <p>Each incident tests real skills: reading Windows Event Logs, spotting Brute Force attacks, detecting lateral movement, identifying phishing indicators, and more. This is what the job actually looks like.</p>
+        <br>
+        <p style="color: var(--accent2)">// You will be evaluated on accuracy and reasoning, not speed.</p>
+      </div>
+      <div class="difficulty-select">
+        <button class="diff-btn selected" data-diff="rookie" onclick="selectDiff(this)">ROOKIE</button>
+        <button class="diff-btn" data-diff="analyst" onclick="selectDiff(this)">ANALYST</button>
+        <button class="diff-btn" data-diff="senior" onclick="selectDiff(this)">SENIOR</button>
+      </div>
+      <button class="start-btn" onclick="startGame()">DEPLOY TO SOC ▶</button>
+    </div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div class="screen" id="gameScreen">
+    <div class="game-layout">
+      
+      <!-- LEFT: ALERT FEED -->
+      <div class="alert-feed">
+        <div class="panel-header">
+          <span class="panel-title">// Alert Queue</span>
+          <div class="blink-dot"></div>
+        </div>
+        <div class="alerts-list" id="alertsList"></div>
+      </div>
+
+      <!-- RIGHT: INVESTIGATION -->
+      <div class="investigation-panel">
+        <div class="panel-header">
+          <span class="panel-title">// Investigation Console</span>
+          <span id="alertIdDisplay" style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim)">SELECT ALERT</span>
+        </div>
+        
+        <!-- Timer -->
+        <div class="timer-bar-wrap" id="timerWrap" style="display:none">
+          <div class="timer-label">
+            <span>RESPONSE TIMER</span>
+            <span id="timerDisplay">--s</span>
+          </div>
+          <div class="timer-bar">
+            <div class="timer-fill" id="timerFill"></div>
+          </div>
+        </div>
+
+        <!-- Progress -->
+        <div class="progress-track" id="progressTrack"></div>
+
+        <div class="inv-content" id="invContent">
+          <div class="placeholder-msg">
+            <div class="placeholder-icon">⬡</div>
+            <p>// SELECT AN ALERT TO INVESTIGATE</p>
+          </div>
+        </div>
+
+        <div class="analysis-section" id="analysisSection" style="display:none">
+          <div class="analysis-title">// Analyst Assessment</div>
+          <div id="questionsContainer"></div>
+          <div class="action-bar" id="actionBar" style="display:none">
+            <button class="action-btn false-positive" onclick="makeDecision('false_positive')" id="fpBtn">FALSE POS</button>
+            <button class="action-btn escalate" onclick="makeDecision('escalate')" id="escBtn">ESCALATE</button>
+            <button class="action-btn resolve" onclick="makeDecision('resolve')" id="resBtn">CLOSE</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS SCREEN -->
+  <div class="screen" id="resultsScreen">
+    <div class="results-screen">
+      <div class="results-title" id="resultsTitle">SHIFT COMPLETE</div>
+      <div class="results-grade" id="resultsGrade">// PERFORMANCE ASSESSMENT //</div>
+      <div class="results-grid">
+        <div class="result-card">
+          <div class="result-card-value" id="rScore">0</div>
+          <div class="result-card-label">Total Score</div>
+        </div>
+        <div class="result-card">
+          <div class="result-card-value" id="rAccuracy">0%</div>
+          <div class="result-card-label">Accuracy</div>
+        </div>
+        <div class="result-card">
+          <div class="result-card-value" id="rResolved">0/0</div>
+          <div class="result-card-label">Incidents Handled</div>
+        </div>
+      </div>
+      <div class="lesson-recap" id="lessonRecap"></div>
+      <button class="replay-btn" onclick="resetGame()">◀ NEW SHIFT</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── SCENARIO DATABASE ─────────────────────────────────────────────────────
+
+const scenarios = [
+  {
+    id: "ALT-001",
+    severity: "critical",
+    name: "Brute Force — Domain Account",
+    time: "08:14:32",
+    concept: "Brute Force / Event ID 4625",
+    logs: `<span class="log-normal">Windows Security Event Log — DC01.corp.local</span>
+<span class="log-normal">──────────────────────────────────────────────────</span>
+<span class="log-highlight">EventID: <span class="log-danger">4625</span>  | Failure Reason: Unknown user or bad password</span>
+<span class="log-normal">Account: </span><span class="log-value">j.okonkwo@corp.local</span>
+<span class="log-normal">Source IP: </span><span class="log-danger">185.220.101.45</span>   <span class="log-highlight">← External IP</span>
+<span class="log-normal">Timestamp: 08:14:01</span>
+
+<span class="log-highlight">EventID: <span class="log-danger">4625</span></span>
+<span class="log-normal">Account: </span><span class="log-value">j.okonkwo@corp.local</span>
+<span class="log-normal">Source IP: </span><span class="log-danger">185.220.101.45</span>
+<span class="log-normal">Timestamp: 08:14:08</span>
+
+<span class="log-highlight">EventID: <span class="log-danger">4625</span></span>
+<span class="log-normal">Account: </span><span class="log-value">j.okonkwo@corp.local</span>
+<span class="log-normal">Source IP: </span><span class="log-danger">185.220.101.45</span>
+<span class="log-normal">Timestamp: 08:14:15</span>
+
+<span class="log-normal">... <span class="log-danger">47 more failures</span> in 90 seconds ...</span>
+
+<span class="log-highlight">EventID: <span class="log-danger">4740</span>  | Account Locked Out</span>
+<span class="log-normal">Account: </span><span class="log-value">j.okonkwo@corp.local</span>
+<span class="log-normal">Timestamp: 08:14:32</span>`,
+    questions: [
+      {
+        q: "What does Windows Event ID 4625 indicate?",
+        options: ["Successful logon", "Account lockout", "Failed logon attempt", "Password change"],
+        correct: 2,
+        explanation: "Event ID 4625 is 'An account failed to log on.' It logs every failed authentication attempt on a Windows system. This is one of the most important event IDs to know as a SOC analyst."
+      },
+      {
+        q: "50 failed logins in 90 seconds from a single external IP — what attack is this?",
+        options: ["Password spraying", "Credential stuffing", "Brute force attack", "Pass-the-hash"],
+        correct: 2,
+        explanation: "This is a classic Brute Force attack — rapid repeated login attempts against ONE account from ONE source IP. Password spraying targets many accounts with one password. Credential stuffing uses known breach data. Pass-the-hash uses NTLM hashes, not passwords."
+      },
+      {
+        q: "What should your triage decision be?",
+        options: ["False positive — automated system test", "Escalate immediately to Tier 2", "Resolve — account is locked, threat is contained"],
+        correct: 1,
+        explanation: "ESCALATE. Even though the account is locked, an external IP actively attacked your domain controller. You need to: investigate the IP reputation, check if any login succeeded before lockout (Event ID 4624), determine if this is a targeted attack, and potentially block the IP at the firewall."
+      }
+    ],
+    correctDecision: "escalate",
+    lessonKey: "Event ID 4625 = Failed login. 4624 = Successful login. 4740 = Account lockout. A burst of 4625s from one external IP is brute force — always escalate."
+  },
+
+  {
+    id: "ALT-002",
+    severity: "high",
+    name: "Suspicious PowerShell Execution",
+    time: "09:31:17",
+    concept: "Malware / PowerShell LOLBins",
+    logs: `<span class="log-normal">Sysmon Event Log — WS04.corp.local (User: a.musa)</span>
+<span class="log-normal">──────────────────────────────────────────────────</span>
+<span class="log-highlight">Event ID: 1 — Process Create</span>
+<span class="log-normal">ParentProcess: </span><span class="log-value">winword.exe</span>  <span class="log-highlight">← Microsoft Word spawned this</span>
+<span class="log-danger">CommandLine: powershell.exe -nop -w hidden -enc</span>
+<span class="log-danger">  JABjAGwAaQBlAG4AdAAgAD0AIABOAGUAdwAtAE8AYgBqAGUA...</span>
+<span class="log-highlight">  ↑ Base64 encoded payload</span>
+<span class="log-normal">Timestamp: 09:31:17</span>
+<span class="log-normal">User: a.musa | Host: WS04</span>
+
+<span class="log-highlight">Event ID: 3 — Network Connection</span>
+<span class="log-normal">Process: powershell.exe</span>
+<span class="log-normal">Destination: </span><span class="log-danger">185.220.101.47:443</span>
+<span class="log-normal">Timestamp: 09:31:19</span>
+<span class="log-highlight">  ↑ Outbound connection 2 seconds after execution</span>`,
+    questions: [
+      {
+        q: "Word spawning PowerShell with a hidden, encoded command is a known indicator of what?",
+        options: ["A legitimate macro for IT automation", "A phishing document executing a payload (macro malware)", "A Windows Update process", "User running a script from IT helpdesk"],
+        correct: 1,
+        explanation: "Malicious Office documents often contain macros that spawn PowerShell to download or execute malware. 'winword.exe → powershell.exe' is a classic malicious parent-child process chain. Legitimate IT scripts don't arrive through Word documents with encoded payloads."
+      },
+      {
+        q: "The PowerShell flags used are: -nop (NoProfile), -w hidden (hidden window), -enc (encoded command). What does this combination suggest?",
+        options: ["Normal administrative task", "Attacker trying to evade detection and execute obfuscated code", "Windows system maintenance", "Antivirus scan"],
+        correct: 1,
+        explanation: "-nop bypasses PowerShell profiles (which might log activity). -w hidden hides the window from the user. -enc runs Base64-encoded commands to obscure the payload from basic log inspection. This combination is a massive red flag — it's the attacker trying to fly under the radar."
+      },
+      {
+        q: "PowerShell connects outbound to an external IP 2 seconds after execution. What is likely happening?",
+        options: ["The user is browsing the web", "Command and Control (C2) communication — malware phoning home", "A Windows license check", "A legitimate cloud sync"],
+        correct: 1,
+        explanation: "This is C2 (Command and Control) — the malware executing on the host is connecting back to the attacker's server to receive instructions or exfiltrate data. The 2-second gap means it's automated. This is an active compromise, not a near-miss."
+      }
+    ],
+    correctDecision: "escalate",
+    lessonKey: "Word → PowerShell (encoded, hidden) → outbound C2 connection = active malware infection. This is a Tier 2/IR team case immediately. Isolate the host."
+  },
+
+  {
+    id: "ALT-003",
+    severity: "medium",
+    name: "Multiple Failed SSH Logins",
+    time: "11:05:44",
+    concept: "Linux Auth Log / SSH Brute Force",
+    logs: `<span class="log-normal">Linux Auth Log — prod-web01.corp.local (/var/log/auth.log)</span>
+<span class="log-normal">──────────────────────────────────────────────────</span>
+<span class="log-danger">Failed password for root from 45.33.32.156 port 52341 ssh2</span>
+<span class="log-normal">Timestamp: 11:04:12</span>
+
+<span class="log-danger">Failed password for root from 45.33.32.156 port 52342 ssh2</span>
+<span class="log-normal">Timestamp: 11:04:14</span>
+
+<span class="log-danger">Failed password for admin from 45.33.32.156 port 52343 ssh2</span>
+<span class="log-danger">Failed password for ubuntu from 45.33.32.156 port 52344 ssh2</span>
+<span class="log-danger">Failed password for test from 45.33.32.156 port 52345 ssh2</span>
+<span class="log-normal">... 120 attempts, usernames: root, admin, ubuntu, test, pi ...</span>
+
+<span class="log-highlight">No successful logins recorded.</span>
+<span class="log-normal">Server config: PasswordAuthentication yes | Root login: yes</span>
+<span class="log-highlight">↑ SSH server allows root login and password auth</span>`,
+    questions: [
+      {
+        q: "The attacker is trying root, admin, ubuntu, test, pi — one IP, many usernames. This differs from ALT-001 (one account, many passwords). What type of attack is this?",
+        options: ["Brute force", "Password spraying", "Dictionary attack cycling common usernames", "Credential stuffing"],
+        correct: 2,
+        explanation: "This is an automated SSH scanner cycling through common default usernames (root, admin, ubuntu, pi are default on many Linux distros). It's opportunistic — the attacker isn't targeting a specific user, they're looking for any weak credential. Very common on internet-exposed SSH servers."
+      },
+      {
+        q: "No successful logins occurred. How should you classify this alert?",
+        options: ["False positive — ignore it", "Resolved — no breach occurred, monitor only", "Escalate — active attack, server config is dangerously exposed"],
+        correct: 2,
+        explanation: "Even though no login succeeded, the server config is dangerous: root login is enabled AND password authentication is allowed on an internet-facing server. This WILL eventually succeed. You should escalate to get SSH hardened: disable root login, require key-based auth, implement fail2ban, restrict SSH to VPN/jumpbox only."
+      },
+      {
+        q: "What hardening measure would have the most impact here?",
+        options: ["Change the root password to something longer", "Disable password authentication, require SSH key pairs only", "Block the specific attacker IP", "Install antivirus on the server"],
+        correct: 1,
+        explanation: "Disabling password authentication entirely means no password can ever be brute-forced over SSH — keys can't be guessed. Blocking one IP just means the attacker rotates to another (they have thousands). Changing the password buys time but doesn't solve the structural problem."
+      }
+    ],
+    correctDecision: "escalate",
+    lessonKey: "SSH brute force on internet-exposed servers is extremely common. Even if no breach occurred, weak SSH config is a vulnerability that must be remediated. SSH key auth + no root login + fail2ban is the baseline."
+  },
+
+  {
+    id: "ALT-004",
+    severity: "low",
+    name: "After-Hours Admin Login",
+    time: "02:47:13",
+    concept: "Behavioral Analysis / Anomaly Detection",
+    logs: `<span class="log-normal">Active Directory Security Event Log — DC01</span>
+<span class="log-normal">──────────────────────────────────────────────────</span>
+<span class="log-highlight">EventID: <span class="log-value">4624</span> — Successful Logon</span>
+<span class="log-normal">Account: </span><span class="log-value">k.abdullahi</span>  <span class="log-highlight">← IT Administrator account</span>
+<span class="log-normal">Logon Type: </span><span class="log-value">3</span>  <span class="log-highlight">← Network logon (remote)</span>
+<span class="log-normal">Source IP: </span><span class="log-value">10.0.1.45</span>  <span class="log-normal">(Internal — HR VLAN)</span>
+<span class="log-normal">Workstation: HR-PC-08</span>
+<span class="log-normal">Timestamp: </span><span class="log-danger">02:47:13</span>  <span class="log-highlight">← 2:47 AM</span>
+
+<span class="log-normal">Baseline behavior for k.abdullahi:</span>
+<span class="log-normal">  Typical hours: 08:00–18:00 WAT</span>
+<span class="log-normal">  Typical location: IT VLAN (10.0.0.x)</span>
+<span class="log-normal">  Typical workstation: IT-PC-02</span>
+<span class="log-highlight">  ↑ This login: wrong time, wrong VLAN, wrong workstation</span>`,
+    questions: [
+      {
+        q: "Event ID 4624 with Logon Type 3 means what?",
+        options: ["Interactive (physical) logon at the machine", "Network logon — user authenticated remotely over the network", "Service account logon", "Screensaver unlock"],
+        correct: 1,
+        explanation: "Logon Type 3 is a network logon — the user authenticated over the network (e.g., accessing a shared folder, RDP via network auth). Key Logon Types: 2 = Interactive (local), 3 = Network, 4 = Batch, 5 = Service, 10 = RemoteInteractive (RDP). Knowing these is essential SOC knowledge."
+      },
+      {
+        q: "Three anomalies exist: wrong time (2 AM), wrong source VLAN (HR instead of IT), wrong workstation. What does this pattern suggest?",
+        options: ["IT admin is working overtime — nothing suspicious", "Possible compromised credential or unauthorized access", "Automated scheduled task ran under this account", "Normal VPN connection from home"],
+        correct: 1,
+        explanation: "Three simultaneous behavioral anomalies is a significant red flag. This could mean: (1) someone compromised k.abdullahi's password and is using it from an HR machine, (2) the admin account is being misused, or (3) there's a legitimate explanation (on-call work). You must investigate further — you can't just close this."
+      },
+      {
+        q: "What is your FIRST action as a Tier 1 analyst?",
+        options: ["Immediately lock the account", "Call k.abdullahi to verify if this was them", "Escalate to Tier 2 with your findings documented", "Mark as false positive — it's an internal IP"],
+        correct: 2,
+        explanation: "As Tier 1, your job is triage and escalation, not remediation. Document the three anomalies clearly and escalate to Tier 2. They will decide whether to contact the user, pull additional logs, or take action. Don't lock accounts unilaterally — you could disrupt legitimate work. Don't close it just because the IP is internal."
+      }
+    ],
+    correctDecision: "escalate",
+    lessonKey: "Behavioral anomalies (wrong time + wrong location + wrong device = 'impossible travel' pattern) are key SOC detection techniques. Event ID 4624 with multiple deviations from baseline always warrants escalation."
+  },
+
+  {
+    id: "ALT-005",
+    severity: "medium",
+    name: "Firewall Alert — Port Scan Detected",
+    time: "14:22:05",
+    concept: "Network Reconnaissance / Port Scanning",
+    logs: `<span class="log-normal">Firewall Log — edge-fw01 | Palo Alto Networks</span>
+<span class="log-normal">──────────────────────────────────────────────────</span>
+<span class="log-normal">Rule: BLOCK-INBOUND-SCAN | Action: </span><span class="log-danger">DENY</span>
+<span class="log-normal">Source: </span><span class="log-danger">91.108.4.100</span>  <span class="log-highlight">← External IP</span>
+<span class="log-normal">Destination: </span><span class="log-value">203.0.113.10</span>  <span class="log-normal">(Your public DMZ IP)</span>
+
+<span class="log-normal">Ports contacted (sequential, 2s interval):</span>
+<span class="log-highlight">21 (FTP), 22 (SSH), 23 (Telnet), 25 (SMTP),</span>
+<span class="log-highlight">80 (HTTP), 110 (POP3), 135 (RPC), 139 (NetBIOS),</span>
+<span class="log-highlight">443 (HTTPS), 445 (SMB), 3389 (RDP), 8080 (HTTP-alt)</span>
+<span class="log-normal">Total: 487 ports in 16 minutes</span>
+<span class="log-normal">All: BLOCKED by firewall rules</span>
+<span class="log-highlight">↑ Sequential low-to-high port progression = automated scan</span>`,
+    questions: [
+      {
+        q: "An external IP contacting 487 ports sequentially in 16 minutes — what activity is this?",
+        options: ["A web crawler indexing your site", "Network reconnaissance — port scanning to identify open services", "A DDoS attack", "A legitimate vulnerability scanner from your IT team"],
+        correct: 1,
+        explanation: "This is a port scan — the attacker (or automated tool like Nmap, Masscan) is probing your external IP to discover what services are running. Sequential port scanning is a classic Nmap -sS (SYN scan) pattern. Attackers do this before an attack to map what's exposed and find attack vectors."
+      },
+      {
+        q: "The firewall blocked all 487 connection attempts. Is there still a risk?",
+        options: ["No — firewall stopped it, nothing to worry about", "Yes — the scan reveals your network is being targeted for a potential future attack", "No — port scans cause no harm"],
+        correct: 1,
+        explanation: "The immediate threat is contained, but the risk isn't zero. The attacker now knows your public IP is alive and is gathering intel for a future attack. This should be logged, the IP reported/blocked, and your external exposure reviewed. If any ports showed as open, that's critical info."
+      },
+      {
+        q: "Ports 445 (SMB) and 3389 (RDP) are specifically targeted. Why are these high priority concerns?",
+        options: ["They are unused ports with no significance", "445 (EternalBlue/WannaCry) and 3389 (RDP brute force/BlueKeep) are among the most exploited ports historically", "These are only used for printing"],
+        correct: 1,
+        explanation: "Port 445 (SMB) was exploited by WannaCry and EternalBlue — some of the most damaging ransomware attacks in history. Port 3389 (RDP) is heavily brute-forced and had the BlueKeep vulnerability. An attacker scanning for these is looking for high-value targets. Ensure these are NOT exposed to the internet."
+      }
+    ],
+    correctDecision: "resolve",
+    lessonKey: "Port scans are reconnaissance — they happen constantly on the internet. If the firewall blocked everything and no ports are exposed, this can be closed after documenting and blocking the IP. The key skill is recognizing scan patterns and knowing which ports (445, 3389) are high-risk if exposed."
+  },
+
+  {
+    id: "ALT-006",
+    severity: "high",
+    name: "Phishing Email — Credential Harvester",
+    time: "10:15:30",
+    concept: "Phishing / Email Security",
+    logs: `<span class="log-normal">Email Security Gateway Alert — Proofpoint</span>
+<span class="log-normal">──────────────────────────────────────────────────</span>
+<span class="log-normal">To: </span><span class="log-value">f.suleiman@corp.local</span>
+<span class="log-normal">From: </span><span class="log-danger">it-support@corp-helpd3sk.com</span>
+<span class="log-highlight">     ↑ Note: corp-helpd3sk.com  (NOT corp.local)</span>
+<span class="log-normal">Subject: </span><span class="log-danger">[URGENT] Your account will be suspended in 24 hours</span>
+<span class="log-normal">Timestamp: 10:15:30</span>
+
+<span class="log-normal">Email Body (excerpt):</span>
+<span class="log-normal">"Dear Employee, Our security team has detected unusual</span>
+<span class="log-normal"> activity. Click below to verify your identity or your</span>
+<span class="log-normal"> account will be permanently suspended."</span>
+
+<span class="log-highlight">Link URL: http://corp-helpd3sk.com/verify?user=f.suleiman</span>
+<span class="log-normal">Link Analysis: </span><span class="log-danger">Credential harvesting page detected</span>
+<span class="log-normal">Domain age: </span><span class="log-danger">3 days old</span>
+<span class="log-normal">SPF: </span><span class="log-danger">FAIL</span>  | <span class="log-normal">DKIM: </span><span class="log-danger">FAIL</span>  | <span class="log-normal">DMARC: </span><span class="log-danger">FAIL</span>
+<span class="log-highlight">Delivery status: Quarantined — user NOT yet notified</span>`,
+    questions: [
+      {
+        q: "Identify ALL phishing indicators present in this email (select the most complete answer):",
+        options: [
+          "Urgent language only",
+          "Fake domain (corp-helpd3sk.com) + urgent language + credential harvesting link + SPF/DKIM/DMARC fail + 3-day-old domain",
+          "Only the SPF/DKIM failure matters",
+          "The email is from IT so it must be legitimate"
+        ],
+        correct: 1,
+        explanation: "Every element is a phishing indicator: (1) typosquatted domain mimicking your company, (2) urgency/fear tactic, (3) link leads to credential harvester, (4) email authentication completely fails (SPF/DKIM/DMARC), (5) brand-new domain (attackers register throwaway domains). A good analyst documents ALL indicators, not just one."
+      },
+      {
+        q: "SPF, DKIM, and DMARC all failed. What does this mean?",
+        options: [
+          "The email server is misconfigured — ignore it",
+          "The sender is not authorized to send email for that domain, and the email was not cryptographically signed — strong evidence of spoofing",
+          "These are optional checks that don't indicate anything",
+          "The email is definitely malware"
+        ],
+        correct: 1,
+        explanation: "SPF (Sender Policy Framework) checks if the sending server is authorized. DKIM (DomainKeys Identified Mail) cryptographically signs emails to prove authenticity. DMARC tells receivers what to do when SPF/DKIM fail. All three failing = the email is almost certainly not from who it claims. These are foundational email security concepts every SOC analyst must know."
+      },
+      {
+        q: "The email is quarantined and the user hasn't seen it. What's your response?",
+        options: [
+          "Delete it and move on — user was protected",
+          "Confirm quarantine, block the sending domain, search for similar emails across all mailboxes, brief the user anyway",
+          "Release it to the user so they know what to watch for",
+          "Escalate to law enforcement immediately"
+        ],
+        correct: 1,
+        explanation: "Even when quarantine works: block the domain so future attempts are caught, search your email gateway for any similar emails that might have slipped through or went to other users, and brief the targeted user. Phishing campaigns target multiple employees — one caught email doesn't mean others weren't delivered. This is contained but needs full sweep."
+      }
+    ],
+    correctDecision: "resolve",
+    lessonKey: "Phishing checklist: domain spoofing, urgency, SPF/DKIM/DMARC failures, new domain age, credential harvesting links. Even quarantined phish require: domain block + org-wide search + user awareness."
+  },
+
+  {
+    id: "ALT-007",
+    severity: "low",
+    name: "Scheduled Antivirus Scan Alert",
+    time: "03:00:01",
+    concept: "Alert Fatigue / False Positives",
+    logs: `<span class="log-normal">Endpoint Detection — CrowdStrike Falcon | WS-FINANCE-03</span>
+<span class="log-normal">──────────────────────────────────────────────────</span>
+<span class="log-highlight">Alert: High CPU usage detected — possible cryptominer</span>
+<span class="log-normal">Process: </span><span class="log-value">MsMpEng.exe</span>  <span class="log-highlight">← Windows Defender</span>
+<span class="log-normal">CPU Usage: 87% for 23 minutes</span>
+<span class="log-normal">Timestamp: 03:00:01</span>
+
+<span class="log-normal">Process Details:</span>
+<span class="log-normal">  Parent: svchost.exe (legitimate Windows host process)</span>
+<span class="log-normal">  Path: C:\\ProgramData\\Microsoft\\Windows Defender\\</span>
+<span class="log-normal">  Signed: </span><span class="log-value">Yes — Microsoft Corporation</span>
+<span class="log-normal">  Hash: [verified against known-good Microsoft hash]</span>
+
+<span class="log-normal">Scheduled Task found:</span>
+<span class="log-value">  Windows Defender Scheduled Scan — Daily 03:00</span>
+<span class="log-highlight">  ↑ Set by Group Policy — IT team confirmed</span>`,
+    questions: [
+      {
+        q: "MsMpEng.exe is causing high CPU at 3 AM. What is this process?",
+        options: ["Unknown malware disguised as a Windows process", "Windows Defender Antivirus engine — the legitimate AV scanner", "A cryptocurrency miner", "A suspicious rootkit"],
+        correct: 1,
+        explanation: "MsMpEng.exe is the Windows Defender AntiMalware Service Executable — the legitimate scanning engine. It commonly causes high CPU during scheduled scans. This is one of the most frequently false-alarmed processes in enterprise environments. Knowing common legitimate Windows processes is essential to avoid wasting time on false positives."
+      },
+      {
+        q: "The process is: signed by Microsoft, hash matches known-good, parent is svchost.exe, path is correct, and matches a GPO-scheduled task. What is your classification?",
+        options: ["Suspicious — high CPU is always bad", "False positive — all indicators point to legitimate scheduled AV scan", "Escalate — better safe than sorry", "Inconclusive — needs more investigation"],
+        correct: 1,
+        explanation: "This is a textbook false positive. Every indicator is clean: valid signature, verified hash, correct file path, legitimate parent process, explained by scheduled task. Escalating this wastes Tier 2's time. Part of being a good SOC analyst is confidently closing false positives so real threats don't get buried in noise."
+      },
+      {
+        q: "Alert fatigue is a real SOC problem. What causes it and why does it matter?",
+        options: [
+          "Too many screens in the SOC room",
+          "When analysts are overwhelmed by too many alerts (many false positives), they start missing real threats buried in the noise",
+          "Analysts getting tired from long shifts",
+          "Alert systems that are too old"
+        ],
+        correct: 1,
+        explanation: "Alert fatigue is one of the most serious problems in security operations. When a SOC is flooded with low-quality alerts (many false positives), analysts become desensitized and may dismiss or delay investigating real threats. Good SOC operations tune detection rules to reduce false positive rates. Correctly closing confirmed false positives is a valuable skill."
+      }
+    ],
+    correctDecision: "false_positive",
+    lessonKey: "MsMpEng.exe high CPU during a scheduled scan = false positive. Know your legitimate Windows processes: svchost.exe, lsass.exe, MsMpEng.exe, etc. Accurate false positive identification reduces alert fatigue and lets real threats stand out."
+  },
+
+  {
+    id: "ALT-008",
+    severity: "critical",
+    name: "Lateral Movement — Pass-the-Hash",
+    time: "16:44:09",
+    concept: "Lateral Movement / Credential Attack",
+    logs: `<span class="log-normal">Windows Security Events — Multiple Hosts</span>
+<span class="log-normal">──────────────────────────────────────────────────</span>
+<span class="log-highlight">HOST: WS04 (Source) → DC01 (Destination)</span>
+<span class="log-highlight">EventID: <span class="log-danger">4648</span> — Logon using explicit credentials</span>
+<span class="log-normal">Account used: </span><span class="log-danger">CORP\\Administrator</span>
+<span class="log-normal">Logon Type: 3 (Network) | Auth: </span><span class="log-danger">NTLM</span>
+<span class="log-normal">Timestamp: 16:44:09</span>
+
+<span class="log-highlight">EventID: <span class="log-danger">4624</span> — Successful Logon on DC01</span>
+<span class="log-normal">Account: </span><span class="log-danger">CORP\\Administrator</span>
+<span class="log-normal">Auth Package: </span><span class="log-danger">NTLM</span>  <span class="log-highlight">← Not Kerberos (suspicious on domain)</span>
+<span class="log-normal">Logon Type: 3 | Source: WS04</span>
+
+<span class="log-normal">Context:</span>
+<span class="log-normal">  WS04 was flagged 2 hours ago (ALT-002 — PowerShell C2)</span>
+<span class="log-highlight">  ↑ Previously compromised workstation now attacking DC</span>
+<span class="log-normal">  Administrator has not physically logged into WS04</span>
+<span class="log-danger">  NTLM auth to DC from workstation = Pass-the-Hash indicator</span>`,
+    questions: [
+      {
+        q: "In a Windows domain environment, authentication to a domain controller normally uses Kerberos. Why is NTLM authentication from a workstation to a DC suspicious?",
+        options: [
+          "NTLM is newer and more secure than Kerberos",
+          "NTLM can authenticate using a password hash without knowing the actual password — attackers dump hashes from memory and reuse them",
+          "NTLM is used for all normal domain logins",
+          "This is only suspicious if the user is not an administrator"
+        ],
+        correct: 1,
+        explanation: "Pass-the-Hash (PtH) exploits NTLM authentication. Instead of needing the plaintext password, attackers dump NTLM hashes from memory (using tools like Mimikatz) on a compromised host, then use that hash to authenticate elsewhere. Kerberos (the normal domain auth) doesn't work this way. Seeing NTLM auth from a workstation to a DC — especially from an already-compromised host — is a critical lateral movement indicator."
+      },
+      {
+        q: "WS04 was already flagged for malware (ALT-002). Now it's authenticating as Domain Administrator to the DC. What is happening?",
+        options: [
+          "The admin remotely fixed WS04 using their credentials",
+          "The attacker pivoted from the compromised workstation to the domain controller using stolen admin credentials — this is lateral movement",
+          "A domain policy is pushing updates",
+          "The admin account is being tested"
+        ],
+        correct: 1,
+        explanation: "This is lateral movement — the attacker compromised WS04, extracted the Administrator NTLM hash from memory, and is now using it to authenticate to the Domain Controller. If they gain control of DC01, they have access to everything in the domain. This is an active, in-progress attack escalating rapidly."
+      },
+      {
+        q: "This is now a full domain compromise in progress. As Tier 1, what is the CRITICAL priority?",
+        options: [
+          "Disconnect WS04 from the network and wait",
+          "Immediately escalate with CRITICAL priority — IR team must isolate WS04, reset all Administrator credentials, and assess DC01 compromise",
+          "Document it and escalate in the morning",
+          "Change the Administrator password only"
+        ],
+        correct: 1,
+        explanation: "This is a major incident. CRITICAL escalation immediately. The IR team needs to: isolate WS04 now, assess what the attacker accessed on DC01, force reset all privileged credentials (domain admin hashes are now compromised), check for persistence mechanisms (new admin accounts, scheduled tasks), and begin forensic collection before evidence is lost."
+      }
+    ],
+    correctDecision: "escalate",
+    lessonKey: "NTLM auth from workstation to DC + previously compromised host = Pass-the-Hash lateral movement. This connects to the earlier PowerShell C2 incident — always correlate alerts. Domain controller compromise = entire org at risk."
+  }
+];
+
+// ─── GAME STATE ───────────────────────────────────────────────────────────────
+
+let state = {
+  difficulty: 'rookie',
+  score: 0,
+  totalQuestions: 0,
+  correctAnswers: 0,
+  currentScenarioIndex: 0,
+  currentQuestionIndex: 0,
+  resolvedAlerts: new Set(),
+  activeAlert: null,
+  questionAnswered: false,
+  allQuestionsAnswered: false,
+  sessionLessons: [],
+  timer: null,
+  timeLeft: 0,
+  maxTime: 0
+};
+
+const DIFFICULTY = {
+  rookie: { time: 0, scorePerQ: 100, label: 'ROOKIE ANALYST' },
+  analyst: { time: 120, scorePerQ: 150, label: 'ANALYST' },
+  senior: { time: 60, scorePerQ: 200, label: 'SENIOR ANALYST' }
+};
+
+// ─── INITIALIZATION ───────────────────────────────────────────────────────────
+
+function selectDiff(btn) {
+  document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  state.difficulty = btn.dataset.diff;
+}
+
+function startGame() {
+  // Shuffle and pick scenarios
+  const shuffled = [...scenarios].sort(() => Math.random() - 0.5).slice(0, 6);
+  state.scenarios = shuffled;
+  state.currentScenarioIndex = 0;
+  state.score = 0;
+  state.totalQuestions = 0;
+  state.correctAnswers = 0;
+  state.resolvedAlerts = new Set();
+  state.sessionLessons = [];
+  
+  showScreen('gameScreen');
+  renderAlertList();
+  buildProgressTrack();
+  updateHUD();
+}
+
+function buildProgressTrack() {
+  const track = document.getElementById('progressTrack');
+  track.innerHTML = '';
+  state.scenarios.forEach((_, i) => {
+    const pip = document.createElement('div');
+    pip.className = 'progress-pip' + (i === 0 ? ' current' : '');
+    pip.id = `pip-${i}`;
+    track.appendChild(pip);
+  });
+}
+
+function renderAlertList() {
+  const list = document.getElementById('alertsList');
+  list.innerHTML = '';
+  state.scenarios.forEach((s, i) => {
+    const item = document.createElement('div');
+    item.className = `alert-item ${s.severity}` + (state.resolvedAlerts.has(i) ? ' resolved' : '');
+    item.id = `alert-${i}`;
+    item.onclick = () => openAlert(i);
+    item.innerHTML = `
+      <div class="alert-severity">${s.severity.toUpperCase()} // ${s.id}</div>
+      <div class="alert-name">${s.name}</div>
+      <div class="alert-time">${s.time}</div>
+    `;
+    list.appendChild(item);
+  });
+}
+
+// ─── ALERT INVESTIGATION ──────────────────────────────────────────────────────
+
+function openAlert(index) {
+  if (state.resolvedAlerts.has(index)) return;
+  
+  state.activeAlert = index;
+  state.currentQuestionIndex = 0;
+  state.questionAnswered = false;
+  state.allQuestionsAnswered = false;
+  
+  document.querySelectorAll('.alert-item').forEach(el => el.classList.remove('active'));
+  document.getElementById(`alert-${index}`).classList.add('active');
+  
+  const scenario = state.scenarios[index];
+  document.getElementById('alertIdDisplay').textContent = `// ${scenario.id}`;
+  
+  // Render logs
+  const content = document.getElementById('invContent');
+  content.innerHTML = `
+    <div class="log-block-label">// Event Logs — ${scenario.name}</div>
+    <div class="log-block">${scenario.logs}</div>
+    <div style="margin-top:8px">
+      ${scenario.concept.split('/').map(c => `<span class="knowledge-tag">${c.trim()}</span>`).join('')}
+    </div>
+  `;
+  
+  // Show analysis
+  document.getElementById('analysisSection').style.display = 'block';
+  document.getElementById('actionBar').style.display = 'none';
+  renderQuestion(index, 0);
+  
+  // Start timer if applicable
+  if (state.difficulty !== 'rookie') {
+    startTimer(DIFFICULTY[state.difficulty].time);
+  }
+}
+
+function renderQuestion(scenarioIdx, qIdx) {
+  const scenario = state.scenarios[scenarioIdx];
+  const q = scenario.questions[qIdx];
+  
+  const container = document.getElementById('questionsContainer');
+  container.innerHTML = `
+    <div class="question-block" id="qBlock">
+      <div class="question-text">
+        <span style="font-family:'Share Tech Mono',monospace;color:var(--dim);font-size:11px">Q${qIdx + 1}/${scenario.questions.length} — </span>
+        ${q.q}
+      </div>
+      <div class="options-grid" id="optionsGrid">
+        ${q.options.map((opt, i) => `
+          <button class="option-btn" onclick="answerQuestion(${scenarioIdx}, ${qIdx}, ${i})">
+            <span class="opt-key">${String.fromCharCode(65 + i)}</span>
+            ${opt}
+          </button>
+        `).join('')}
+      </div>
+      <div class="feedback-box" id="feedbackBox">
+        <div class="feedback-title"></div>
+        <div class="feedback-text"></div>
+      </div>
+    </div>
+  `;
+}
+
+function answerQuestion(scenarioIdx, qIdx, selected) {
+  const scenario = state.scenarios[scenarioIdx];
+  const q = scenario.questions[qIdx];
+  const buttons = document.querySelectorAll('.option-btn');
+  
+  buttons.forEach(b => b.disabled = true);
+  
+  const isCorrect = selected === q.correct;
+  buttons[selected].classList.add(isCorrect ? 'correct' : 'wrong');
+  if (!isCorrect) buttons[q.correct].classList.add('correct');
+  
+  state.totalQuestions++;
+  if (isCorrect) {
+    state.correctAnswers++;
+    state.score += DIFFICULTY[state.difficulty].scorePerQ;
+  }
+  
+  const feedback = document.getElementById('feedbackBox');
+  feedback.className = `feedback-box show ${isCorrect ? 'correct' : 'wrong'}`;
+  feedback.querySelector('.feedback-title').textContent = isCorrect ? '// CORRECT' : '// INCORRECT — LEARN FROM THIS';
+  feedback.querySelector('.feedback-text').textContent = q.explanation;
+  
+  updateHUD();
+  
+  // Auto-advance after delay
+  setTimeout(() => {
+    const nextQ = qIdx + 1;
+    if (nextQ < scenario.questions.length) {
+      renderQuestion(scenarioIdx, nextQ);
+    } else {
+      // All questions answered — show action buttons
+      state.allQuestionsAnswered = true;
+      document.getElementById('actionBar').style.display = 'flex';
+      document.getElementById('questionsContainer').innerHTML = `
+        <div style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent2);margin-bottom:16px;letter-spacing:2px">
+          // ASSESSMENT COMPLETE — MAKE YOUR TRIAGE DECISION
+        </div>
+        <div style="font-size:13px;color:var(--text);line-height:1.7;margin-bottom:16px">
+          Based on your investigation, classify this incident and take action:
+        </div>
+      `;
+      stopTimer();
+    }
+  }, 2200);
+}
+
+function makeDecision(decision) {
+  const scenarioIdx = state.activeAlert;
+  const scenario = state.scenarios[scenarioIdx];
+  const correct = decision === scenario.correctDecision;
+  
+  if (correct) state.score += 50;
+  
+  // Disable action buttons
+  document.querySelectorAll('.action-btn').forEach(b => b.disabled = true);
+  
+  const decisionText = {
+    'false_positive': 'FALSE POSITIVE',
+    'escalate': 'ESCALATE TO TIER 2',
+    'resolve': 'CLOSE / RESOLVE'
+  };
+  
+  const container = document.getElementById('questionsContainer');
+  container.innerHTML += `
+    <div class="feedback-box show ${correct ? 'correct' : 'wrong'}" style="display:block">
+      <div class="feedback-title">${correct ? '// CORRECT TRIAGE' : '// INCORRECT TRIAGE'}</div>
+      <div class="feedback-text">
+        Your decision: <strong>${decisionText[decision]}</strong><br>
+        Correct answer: <strong>${decisionText[scenario.correctDecision]}</strong><br><br>
+        ${correct ? '✓ Well done. Good triage instinct.' : '✗ Review the reasoning in the questions above.'}
+      </div>
+    </div>
+  `;
+  
+  // Add lesson
+  state.sessionLessons.push({ correct, lesson: scenario.lessonKey, name: scenario.name });
+  state.resolvedAlerts.add(scenarioIdx);
+  
+  // Update pip
+  const pip = document.getElementById(`pip-${scenarioIdx}`);
+  if (pip) { pip.classList.remove('current'); pip.classList.add('done'); }
+  
+  // Update alert list
+  document.getElementById(`alert-${scenarioIdx}`).classList.add('resolved');
+  document.getElementById(`alert-${scenarioIdx}`).classList.remove('active');
+  
+  // Set next pip active
+  const nextUnresolved = state.scenarios.findIndex((_, i) => !state.resolvedAlerts.has(i) && i !== scenarioIdx);
+  if (nextUnresolved !== -1) {
+    const nextPip = document.getElementById(`pip-${nextUnresolved}`);
+    if (nextPip) nextPip.classList.add('current');
+  }
+  
+  updateHUD();
+  
+  setTimeout(() => {
+    if (state.resolvedAlerts.size >= state.scenarios.length) {
+      showResults();
+    }
+  }, 3000);
+}
+
+// ─── TIMER ────────────────────────────────────────────────────────────────────
+
+function startTimer(seconds) {
+  stopTimer();
+  state.timeLeft = seconds;
+  state.maxTime = seconds;
+  document.getElementById('timerWrap').style.display = 'block';
+  updateTimerBar();
+  state.timer = setInterval(() => {
+    state.timeLeft--;
+    updateTimerBar();
+    if (state.timeLeft <= 0) {
+      stopTimer();
+      if (!state.allQuestionsAnswered) {
+        // Time's up — force a wrong answer display
+        document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+        const container = document.getElementById('questionsContainer');
+        container.innerHTML += `<div style="font-family:'Share Tech Mono',monospace;color:var(--danger);font-size:12px;letter-spacing:2px;margin-top:16px">// TIME EXPIRED — RESPONSE TOO SLOW</div>`;
+        state.totalQuestions++;
+        document.getElementById('actionBar').style.display = 'flex';
+        state.allQuestionsAnswered = true;
+      }
+    }
+  }, 1000);
+}
+
+function stopTimer() {
+  if (state.timer) { clearInterval(state.timer); state.timer = null; }
+}
+
+function updateTimerBar() {
+  const pct = (state.timeLeft / state.maxTime) * 100;
+  const fill = document.getElementById('timerFill');
+  const label = document.getElementById('timerDisplay');
+  fill.style.width = pct + '%';
+  label.textContent = state.timeLeft + 's';
+  fill.className = 'timer-fill';
+  if (pct < 30) fill.classList.add('critical');
+  else if (pct < 50) fill.classList.add('warning');
+}
+
+// ─── RESULTS ─────────────────────────────────────────────────────────────────
+
+function showResults() {
+  stopTimer();
+  const accuracy = state.totalQuestions > 0 ? Math.round((state.correctAnswers / state.totalQuestions) * 100) : 0;
+  const pass = accuracy >= 60;
+  
+  document.getElementById('rScore').textContent = state.score;
+  document.getElementById('rAccuracy').textContent = accuracy + '%';
+  document.getElementById('rResolved').textContent = `${state.resolvedAlerts.size}/${state.scenarios.length}`;
+  
+  const title = document.getElementById('resultsTitle');
+  title.textContent = accuracy >= 80 ? 'SHIFT COMPLETE' : accuracy >= 60 ? 'SHIFT COMPLETE' : 'NEEDS IMPROVEMENT';
+  title.className = `results-title ${pass ? 'pass' : 'fail'}`;
+  
+  let grade = '';
+  if (accuracy >= 90) grade = '// EXCEPTIONAL — SENIOR ANALYST MATERIAL';
+  else if (accuracy >= 75) grade = '// SOLID PERFORMANCE — ANALYST LEVEL';
+  else if (accuracy >= 60) grade = '// PASSING — REVIEW MISSED CONCEPTS';
+  else grade = '// BELOW THRESHOLD — MORE TRAINING REQUIRED';
+  document.getElementById('resultsGrade').textContent = grade;
+  
+  // Lesson recap
+  const recap = document.getElementById('lessonRecap');
+  recap.innerHTML = `<h3>// KEY TAKEAWAYS FROM THIS SHIFT</h3>` +
+    state.sessionLessons.map(l => `
+      <div class="recap-item">
+        <span class="recap-icon">${l.correct ? '✓' : '○'}</span>
+        <div>
+          <div style="font-weight:600;color:var(--text);margin-bottom:4px">${l.name}</div>
+          <div style="color:var(--dim);font-size:13px">${l.lesson}</div>
+        </div>
+      </div>
+    `).join('');
+  
+  showScreen('resultsScreen');
+}
+
+// ─── UTILITIES ────────────────────────────────────────────────────────────────
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function updateHUD() {
+  document.getElementById('scoreDisplay').textContent = state.score;
+  const acc = state.totalQuestions > 0 ? Math.round((state.correctAnswers / state.totalQuestions) * 100) : 0;
+  document.getElementById('accuracyDisplay').textContent = acc + '%';
+  document.getElementById('tierDisplay').textContent = 
+    acc >= 85 ? 'L2' : acc >= 70 ? 'L1+' : 'L1';
+}
+
+function resetGame() {
+  state = {
+    difficulty: state.difficulty,
+    score: 0, totalQuestions: 0, correctAnswers: 0,
+    currentScenarioIndex: 0, currentQuestionIndex: 0,
+    resolvedAlerts: new Set(), activeAlert: null,
+    questionAnswered: false, allQuestionsAnswered: false,
+    sessionLessons: [], timer: null, timeLeft: 0, maxTime: 0
+  };
+  showScreen('introScreen');
+}
+</script>
+</body>
+</html>
